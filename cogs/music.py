@@ -71,10 +71,11 @@ class Music(commands.Cog):
         await interaction.response.defer(ephemeral=True)
 
         try:
-            # 검색어에 따라 트랙 검색 (URL이 아니면 YouTube 검색)
-            if not 검색어.startswith(("http://", "https://")):
-                검색어 = f"ytsearch:{검색어}"
-            tracks = await wavelink.Playable.search(검색어)
+            # 검색어에 따라 트랙 검색
+            if 검색어.startswith(("http://", "https://")):
+                tracks = await wavelink.Playable.search(검색어)
+            else:
+                tracks = await wavelink.Playable.search(검색어, source=wavelink.TrackSource.YouTube)
 
             if not tracks:
                 await interaction.followup.send("❌ 검색 결과가 없습니다.")
