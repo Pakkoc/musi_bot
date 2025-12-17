@@ -1,0 +1,38 @@
+# Environment
+.env
+.env.local
+venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Private
+service_guide/
+참고사항.txt
+
+# Lavalink
+lavalink/plugins/
+lavalink/*.json
+lavalink/logs/
+Lavalink.jar
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+logs/
+
+# Python
+*.egg-info/
+dist/
+build/
+.eggs/

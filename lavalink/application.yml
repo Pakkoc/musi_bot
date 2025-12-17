@@ -1,0 +1,116 @@
+# Lavalink v4 Configuration
+# 2025년 YouTube 차단 대응 설정
+
+server:
+  port: 2333
+  address: 0.0.0.0
+
+lavalink:
+  plugins:
+    # YouTube Source Plugin (필수) - 429 에러 방지용
+    - dependency: "dev.lavalink.youtube:youtube-plugin:1.11.5"
+      snapshot: false
+    # LavaSrc Plugin - Spotify, Apple Music, Deezer 지원
+    - dependency: "com.github.topi314.lavasrc:lavasrc-plugin:4.3.0"
+      repository: "https://maven.lavalink.dev/releases"
+    # SponsorBlock Plugin - 광고 구간 자동 스킵 (선택)
+    - dependency: "com.github.topi314.sponsorblock:sponsorblock-plugin:3.0.1"
+      repository: "https://maven.lavalink.dev/releases"
+
+  server:
+    password: "youshallnotpass"
+    sources:
+      # 내장 소스 비활성화 (플러그인 사용)
+      youtube: false
+      bandcamp: true
+      soundcloud: true
+      twitch: true
+      vimeo: true
+      http: true
+      local: false
+
+    # 버퍼 설정
+    bufferDurationMs: 400
+    frameBufferDurationMs: 5000
+    opusEncodingQuality: 10
+    resamplingQuality: HIGH
+    trackStuckThresholdMs: 10000
+    useSeekGhosting: true
+
+    # 플레이어 설정
+    playerUpdateInterval: 5
+    youtubePlaylistLoadLimit: 100
+    youtubeSearchEnabled: true
+    gc-warnings: true
+
+# YouTube Plugin 설정 (핵심!)
+plugins:
+  youtube:
+    enabled: true
+    allowSearch: true
+    allowDirectVideoIds: true
+    allowDirectPlaylistIds: true
+
+    # OAuth2 인증 설정 (429 에러 방지 핵심)
+    oauth:
+      enabled: true
+      # 첫 실행 시 터미널에 인증 URL이 표시됩니다.
+      # 해당 URL로 접속하여 Google 계정으로 로그인하세요.
+      # 로그인 후 refresh token이 자동 저장됩니다.
+
+    # 클라이언트 설정 (차단 회피)
+    clients:
+      - MUSIC
+      - ANDROID_VR
+      - TVHTML5_EMBEDDED
+
+    # PoToken 설정 (선택 - 더 안정적인 연결)
+    # pot:
+    #   enabled: true
+    #   token: "YOUR_POTOKEN_HERE"  # 필요시 설정
+
+  # LavaSrc 설정 (Spotify 등 지원)
+  lavasrc:
+    providers:
+      - "ytsearch:\"%ISRC%\""
+      - "ytsearch:%QUERY%"
+    sources:
+      spotify: true
+      applemusic: false
+      deezer: false
+      yandexmusic: false
+      flowerytts: false
+      youtube: true
+
+    # Spotify 설정 (사용하려면 아래 주석 해제 후 설정)
+    # spotify:
+    #   clientId: "your_spotify_client_id"
+    #   clientSecret: "your_spotify_client_secret"
+    #   countryCode: "KR"
+    #   playlistLoadLimit: 100
+    #   albumLoadLimit: 100
+
+  # SponsorBlock 설정
+  sponsorblock:
+    servers:
+      - "https://sponsor.ajay.app"
+    categories:
+      - sponsor
+      - selfpromo
+      - interaction
+      - intro
+      - outro
+      - music_offtopic
+
+# 로깅 설정
+logging:
+  level:
+    root: INFO
+    lavalink: INFO
+    dev.lavalink.youtube: DEBUG
+
+# 메트릭 (선택)
+metrics:
+  prometheus:
+    enabled: false
+    endpoint: /metrics
