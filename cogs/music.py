@@ -59,8 +59,8 @@ class Music(commands.Cog):
 
         return player
 
-    @app_commands.command(name="재생", description="음악을 재생합니다 (YouTube, Spotify, SoundCloud 등)")
-    @app_commands.describe(검색어="노래 제목, YouTube 링크, Spotify 링크 등")
+    @app_commands.command(name="재생", description="음악을 재생합니다")
+    @app_commands.describe(검색어="노래 제목, YouTube 링크")
     async def play(self, interaction: discord.Interaction, 검색어: str):
         """음악 재생"""
 

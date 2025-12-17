@@ -9,6 +9,7 @@ __pycache__/
 # Private
 service_guide/
 참고사항.txt
+deploy.md
 
 # Lavalink
 lavalink/plugins/
