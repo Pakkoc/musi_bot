@@ -75,7 +75,7 @@ class Music(commands.Cog):
             if 검색어.startswith(("http://", "https://")):
                 tracks = await wavelink.Playable.search(검색어)
             else:
-                tracks = await wavelink.Playable.search(검색어, source=wavelink.TrackSource.YouTube)
+                tracks = await wavelink.Playable.search(검색어, source=wavelink.TrackSource.YouTubeMusic)
 
             if not tracks:
                 await interaction.followup.send("❌ 검색 결과가 없습니다.")
