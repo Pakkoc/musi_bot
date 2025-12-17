@@ -75,7 +75,8 @@ class Music(commands.Cog):
             if 검색어.startswith(("http://", "https://")):
                 tracks = await wavelink.Playable.search(검색어)
             else:
-                tracks = await wavelink.Playable.search(검색어, source=wavelink.TrackSource.YouTubeMusic)
+                # ytsearch: prefix로 YouTube 검색
+                tracks = await wavelink.Playable.search(f"ytsearch:{검색어}", source=None)
 
             if not tracks:
                 await interaction.followup.send("❌ 검색 결과가 없습니다.")
