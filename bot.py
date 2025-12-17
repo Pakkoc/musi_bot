@@ -72,25 +72,9 @@ class MusicBot(commands.Bot):
         print(f"[Lavalink] 세션 ID: {payload.session_id}")
 
     async def on_wavelink_track_start(self, payload: wavelink.TrackStartEventPayload):
-        """트랙 재생 시작 시"""
-        player = payload.player
+        """트랙 재생 시작 시 (로그만 출력)"""
         track = payload.track
-
-        if player and player.channel:
-            # 재생 시작 알림 (텍스트 채널이 있는 경우)
-            if hasattr(player, 'text_channel') and player.text_channel:
-                embed = discord.Embed(
-                    title="🎵 현재 재생 중",
-                    description=f"**[{track.title}]({track.uri})**",
-                    color=0x3498db
-                )
-                embed.add_field(name="길이", value=format_duration(track.length), inline=True)
-                embed.add_field(name="요청자", value=getattr(track, 'requester', 'Unknown'), inline=True)
-
-                if track.artwork:
-                    embed.set_thumbnail(url=track.artwork)
-
-                await player.text_channel.send(embed=embed)
+        print(f"[재생] {track.title}")
 
     async def on_wavelink_track_end(self, payload: wavelink.TrackEndEventPayload):
         """트랙 재생 종료 시"""
@@ -110,8 +94,7 @@ class MusicBot(commands.Bot):
     async def on_wavelink_inactive_player(self, player: wavelink.Player):
         """플레이어가 비활성 상태일 때 (채널에 혼자 남음)"""
         await player.disconnect()
-        if hasattr(player, 'text_channel') and player.text_channel:
-            await player.text_channel.send("👋 채널에 아무도 없어서 퇴장합니다.")
+        print("[퇴장] 채널에 아무도 없어서 퇴장")
 
 
 def format_duration(milliseconds: int) -> str:
@@ -131,8 +114,7 @@ async def start_disconnect_timer(player: wavelink.Player, timeout: int = 60):
 
     if player and player.connected and not player.playing:
         await player.disconnect()
-        if hasattr(player, 'text_channel') and player.text_channel:
-            await player.text_channel.send("👋 재생할 곡이 없어서 퇴장합니다.")
+        print("[퇴장] 재생할 곡이 없어서 퇴장")
 
 
 async def main():

@@ -8,7 +8,7 @@ server:
 lavalink:
   plugins:
     # YouTube Source Plugin (필수) - 429 에러 방지용
-    - dependency: "dev.lavalink.youtube:youtube-plugin:1.11.5"
+    - dependency: "dev.lavalink.youtube:youtube-plugin:1.16.0"
       snapshot: false
     # LavaSrc Plugin - Spotify, Apple Music, Deezer 지원
     - dependency: "com.github.topi314.lavasrc:lavasrc-plugin:4.3.0"
@@ -52,17 +52,16 @@ plugins:
     allowDirectPlaylistIds: true
 
     # OAuth2 인증 설정 (429 에러 방지 핵심)
+    # 서버에서 직접 OAuth 인증 후 refreshToken 설정 필요
     oauth:
       enabled: true
-      # 첫 실행 시 터미널에 인증 URL이 표시됩니다.
-      # 해당 URL로 접속하여 Google 계정으로 로그인하세요.
-      # 로그인 후 refresh token이 자동 저장됩니다.
+      # refreshToken: "YOUR_REFRESH_TOKEN_HERE"
 
-    # 클라이언트 설정 (차단 회피)
+    # 클라이언트 설정 (OAuth 호환 + 안정적)
     clients:
-      - MUSIC
+      - ANDROID_MUSIC
       - ANDROID_VR
-      - TVHTML5_EMBEDDED
+      - TV_EMBEDDED
 
     # PoToken 설정 (선택 - 더 안정적인 연결)
     # pot:

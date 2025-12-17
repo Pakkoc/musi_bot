@@ -68,7 +68,7 @@ class Music(commands.Cog):
         if not player:
             return
 
-        await interaction.response.defer()
+        await interaction.response.defer(ephemeral=True)
 
         try:
             # 검색어에 따라 트랙 검색
@@ -157,7 +157,7 @@ class Music(commands.Cog):
         if player.queue:
             embed.add_field(name="다음 곡", value=player.queue[0].title, inline=False)
 
-        await interaction.response.send_message(embed=embed)
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @app_commands.command(name="일시정지", description="음악을 일시정지하거나 다시 재생합니다")
     async def pause(self, interaction: discord.Interaction):
@@ -171,10 +171,10 @@ class Music(commands.Cog):
 
         if player.paused:
             await player.pause(False)
-            await interaction.response.send_message("▶️ 재생을 재개합니다.")
+            await interaction.response.send_message("▶️ 재생을 재개합니다.", ephemeral=True)
         else:
             await player.pause(True)
-            await interaction.response.send_message("⏸️ 일시정지되었습니다.")
+            await interaction.response.send_message("⏸️ 일시정지되었습니다.", ephemeral=True)
 
     @app_commands.command(name="멈춰", description="음악을 멈추고 봇이 퇴장합니다")
     async def stop(self, interaction: discord.Interaction):
@@ -189,7 +189,7 @@ class Music(commands.Cog):
         player.queue.clear()
         await player.disconnect()
 
-        await interaction.response.send_message("👋 음악을 멈추고 퇴장합니다.")
+        await interaction.response.send_message("👋 음악을 멈추고 퇴장합니다.", ephemeral=True)
 
     @app_commands.command(name="대기열", description="현재 대기열을 확인합니다")
     async def queue(self, interaction: discord.Interaction):
@@ -229,7 +229,7 @@ class Music(commands.Cog):
         else:
             embed.add_field(name="📋 대기열", value="비어있음", inline=False)
 
-        await interaction.response.send_message(embed=embed)
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @app_commands.command(name="반복", description="반복 재생 모드를 설정합니다")
     @app_commands.describe(모드="반복 모드 선택")
@@ -249,13 +249,13 @@ class Music(commands.Cog):
 
         if 모드 == "off":
             player.queue.mode = wavelink.QueueMode.normal
-            await interaction.response.send_message("➡️ 반복 재생이 꺼졌습니다.")
+            await interaction.response.send_message("➡️ 반복 재생이 꺼졌습니다.", ephemeral=True)
         elif 모드 == "one":
             player.queue.mode = wavelink.QueueMode.loop
-            await interaction.response.send_message("🔂 현재 곡을 반복합니다.")
+            await interaction.response.send_message("🔂 현재 곡을 반복합니다.", ephemeral=True)
         elif 모드 == "all":
             player.queue.mode = wavelink.QueueMode.loop_all
-            await interaction.response.send_message("🔁 전체 대기열을 반복합니다.")
+            await interaction.response.send_message("🔁 전체 대기열을 반복합니다.", ephemeral=True)
 
     @app_commands.command(name="볼륨", description="볼륨을 조절합니다 (0-100)")
     @app_commands.describe(볼륨="볼륨 크기 (0-100)")
@@ -271,7 +271,7 @@ class Music(commands.Cog):
         볼륨 = max(0, min(100, 볼륨))  # 0-100 범위 제한
         await player.set_volume(볼륨)
 
-        await interaction.response.send_message(f"🔊 볼륨을 {볼륨}%로 설정했습니다.")
+        await interaction.response.send_message(f"🔊 볼륨을 {볼륨}%로 설정했습니다.", ephemeral=True)
 
     @app_commands.command(name="셔플", description="대기열을 섞습니다")
     async def shuffle(self, interaction: discord.Interaction):
@@ -288,7 +288,7 @@ class Music(commands.Cog):
             return
 
         player.queue.shuffle()
-        await interaction.response.send_message(f"🔀 대기열을 섞었습니다! ({len(player.queue)}곡)")
+        await interaction.response.send_message(f"🔀 대기열을 섞었습니다! ({len(player.queue)}곡)", ephemeral=True)
 
     @app_commands.command(name="삭제", description="대기열에서 특정 곡을 삭제합니다")
     @app_commands.describe(번호="삭제할 곡의 번호 (대기열에서)")
@@ -311,7 +311,7 @@ class Music(commands.Cog):
         removed = player.queue[번호 - 1]
         del player.queue[번호 - 1]
 
-        await interaction.response.send_message(f"🗑️ **{removed.title}** 삭제됨")
+        await interaction.response.send_message(f"🗑️ **{removed.title}** 삭제됨", ephemeral=True)
 
     @app_commands.command(name="현재곡", description="현재 재생 중인 곡 정보를 보여줍니다")
     async def nowplaying(self, interaction: discord.Interaction):
@@ -357,7 +357,7 @@ class Music(commands.Cog):
         embed.add_field(name="반복", value=mode_text.get(player.queue.mode, "끔"), inline=True)
         embed.add_field(name="볼륨", value=f"{player.volume}%", inline=True)
 
-        await interaction.response.send_message(embed=embed)
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @app_commands.command(name="탐색", description="곡의 특정 위치로 이동합니다")
     @app_commands.describe(초="이동할 위치 (초 단위)")
@@ -381,7 +381,7 @@ class Music(commands.Cog):
             return
 
         await player.seek(position_ms)
-        await interaction.response.send_message(f"⏩ {self.format_duration(position_ms)}로 이동했습니다.")
+        await interaction.response.send_message(f"⏩ {self.format_duration(position_ms)}로 이동했습니다.", ephemeral=True)
 
 
 async def setup(bot: commands.Bot):
