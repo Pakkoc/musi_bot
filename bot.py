@@ -91,10 +91,27 @@ class MusicBot(commands.Bot):
             # 큐가 비었으면 자동 퇴장 타이머 시작
             await start_disconnect_timer(player)
 
-    async def on_wavelink_inactive_player(self, player: wavelink.Player):
-        """플레이어가 비활성 상태일 때 (채널에 혼자 남음)"""
-        await player.disconnect()
-        print("[퇴장] 채널에 아무도 없어서 퇴장")
+    async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
+        """음성 채널 상태 변경 감지 - 봇 혼자 남으면 퇴장"""
+
+        # 봇 자신의 상태 변경은 무시
+        if member.id == self.user.id:
+            return
+
+        # 누군가 채널에서 나갔을 때만 체크
+        if before.channel is None:
+            return
+
+        # 봇이 해당 채널에 있는지 확인
+        player = member.guild.voice_client
+        if not player or player.channel != before.channel:
+            return
+
+        # 채널에 봇 혼자만 남았는지 확인 (봇 제외한 멤버가 0명)
+        members = [m for m in before.channel.members if not m.bot]
+        if len(members) == 0:
+            await player.disconnect()
+            print(f"[퇴장] {before.channel.name} 채널에 아무도 없어서 퇴장")
 
 
 def format_duration(milliseconds: int) -> str:
