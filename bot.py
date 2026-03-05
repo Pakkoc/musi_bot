@@ -8,10 +8,60 @@ from discord.ext import commands
 import wavelink
 import os
 import asyncio
+import logging
 from dotenv import load_dotenv
 
 # 환경 변수 로드
 load_dotenv()
+
+# --- Lavalink 4.2+ channelId 호환 패치 ---
+# wavelink 3.4.x는 voice PATCH에 channelId를 보내지 않아 Lavalink 4.2+에서 오류 발생.
+# 런타임에서 Player 메서드를 패치하여 channelId를 주입한다.
+
+_original_on_voice_state_update = wavelink.Player.on_voice_state_update
+
+
+async def _patched_on_voice_state_update(self, data, /):
+    channel_id = data["channel_id"]
+    if channel_id:
+        if not hasattr(self, "_voice_state"):
+            self._voice_state = {"voice": {}}
+        self._voice_state.setdefault("voice", {})["channel_id"] = channel_id
+    await _original_on_voice_state_update(self, data)
+
+
+_original_dispatch_voice_update = wavelink.Player._dispatch_voice_update
+
+
+async def _patched_dispatch_voice_update(self):
+    assert self.guild is not None
+    data = self._voice_state["voice"]
+    session_id = data.get("session_id")
+    token = data.get("token")
+    endpoint = data.get("endpoint")
+    channel_id = data.get("channel_id")
+
+    if not session_id or not token or not endpoint:
+        return
+
+    voice_payload = {"sessionId": session_id, "token": token, "endpoint": endpoint}
+    if channel_id:
+        voice_payload["channelId"] = channel_id
+
+    try:
+        await self.node._update_player(self.guild.id, data={"voice": voice_payload})
+    except wavelink.LavalinkException:
+        await self.disconnect()
+    else:
+        self._connection_event.set()
+
+    logging.getLogger("wavelink.player").debug(
+        "Player %s is dispatching VOICE_UPDATE.", self.guild.id
+    )
+
+
+wavelink.Player.on_voice_state_update = _patched_on_voice_state_update
+wavelink.Player._dispatch_voice_update = _patched_dispatch_voice_update
 
 TOKEN = os.getenv("DISCORD_TOKEN")
 LAVALINK_URI = os.getenv("LAVALINK_URI", "http://localhost:2333")

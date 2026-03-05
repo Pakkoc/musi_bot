@@ -40,7 +40,7 @@ class Music(commands.Cog):
         if not player:
             # 새로 연결
             try:
-                player = await interaction.user.voice.channel.connect(cls=wavelink.Player)
+                player = await interaction.user.voice.channel.connect(cls=wavelink.Player, timeout=15.0, self_deaf=True)
                 player.text_channel = interaction.channel  # 텍스트 채널 저장
                 player.autoplay = wavelink.AutoPlayMode.disabled  # 자동재생 비활성화
             except Exception as e:
