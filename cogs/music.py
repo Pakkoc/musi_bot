@@ -32,6 +32,151 @@ def _normalize_youtube_url(url: str) -> str:
         return url
 
 
+class QueueView(discord.ui.View):
+    """대기열 + 다음 사이클(history) 곡을 셀렉트로 골라 삭제하는 컴포넌트.
+
+    페이지당 25곡(Discord Select 옵션 한계). 다중 선택 가능.
+    """
+
+    PAGE_SIZE = 25
+
+    def __init__(self, cog: "Music", player: wavelink.Player) -> None:
+        super().__init__(timeout=180)
+        self.cog = cog
+        self.player = player
+        self.page = 0
+        self.message: Optional[discord.Message] = None
+        self._rebuild()
+
+    def _items(self) -> list[tuple[str, int, wavelink.Playable]]:
+        items: list[tuple[str, int, wavelink.Playable]] = []
+        for i, t in enumerate(self.player.queue):
+            items.append(("Q", i, t))
+        history = self.player.queue.history
+        if history is not None:
+            for i, t in enumerate(history):
+                items.append(("H", i, t))
+        return items
+
+    def _rebuild(self) -> None:
+        self.clear_items()
+        items = self._items()
+        total_pages = max(1, (len(items) + self.PAGE_SIZE - 1) // self.PAGE_SIZE)
+        self.page = max(0, min(self.page, total_pages - 1))
+        start = self.page * self.PAGE_SIZE
+        page_items = items[start : start + self.PAGE_SIZE]
+
+        if page_items:
+            options: list[discord.SelectOption] = []
+            for kind, idx, track in page_items:
+                label = f"{kind}{idx + 1}. {track.title}"
+                if len(label) > 100:
+                    label = label[:97] + "..."
+                options.append(discord.SelectOption(
+                    label=label,
+                    value=f"{kind}:{idx}",
+                    description=self.cog.format_duration(track.length),
+                ))
+            select = discord.ui.Select(
+                placeholder=f"🗑️ 삭제할 곡 선택 (페이지 {self.page + 1}/{total_pages}, 다중 선택 가능)",
+                min_values=1,
+                max_values=len(options),
+                options=options,
+                row=0,
+            )
+            select.callback = self._make_select_callback(select)
+            self.add_item(select)
+
+        prev_btn = discord.ui.Button(
+            label="◀",
+            style=discord.ButtonStyle.secondary,
+            disabled=self.page == 0,
+            row=1,
+        )
+        prev_btn.callback = self._on_prev
+
+        refresh_btn = discord.ui.Button(
+            label="🔄 새로고침",
+            style=discord.ButtonStyle.secondary,
+            row=1,
+        )
+        refresh_btn.callback = self._on_refresh
+
+        next_btn = discord.ui.Button(
+            label="▶",
+            style=discord.ButtonStyle.secondary,
+            disabled=self.page >= total_pages - 1,
+            row=1,
+        )
+        next_btn.callback = self._on_next
+
+        self.add_item(prev_btn)
+        self.add_item(refresh_btn)
+        self.add_item(next_btn)
+
+    def _make_select_callback(self, select: discord.ui.Select):
+        async def callback(interaction: discord.Interaction) -> None:
+            queue_idx: list[int] = []
+            history_idx: list[int] = []
+            for value in select.values:
+                kind, _, idx_str = value.partition(":")
+                try:
+                    idx = int(idx_str)
+                except ValueError:
+                    continue
+                if kind == "Q":
+                    queue_idx.append(idx)
+                elif kind == "H":
+                    history_idx.append(idx)
+
+            # 큰 인덱스부터 삭제: 작은 것부터 지우면 시프트 때문에 잘못된 곡이 빠진다.
+            for i in sorted(queue_idx, reverse=True):
+                if 0 <= i < len(self.player.queue):
+                    del self.player.queue[i]
+            history = self.player.queue.history
+            if history is not None:
+                for i in sorted(history_idx, reverse=True):
+                    if 0 <= i < len(history):
+                        del history[i]
+
+            self._rebuild()
+            await interaction.response.edit_message(
+                embed=self.cog._queue_embed(self.player), view=self
+            )
+        return callback
+
+    async def _on_prev(self, interaction: discord.Interaction) -> None:
+        self.page -= 1
+        self._rebuild()
+        await interaction.response.edit_message(
+            embed=self.cog._queue_embed(self.player), view=self
+        )
+
+    async def _on_next(self, interaction: discord.Interaction) -> None:
+        self.page += 1
+        self._rebuild()
+        await interaction.response.edit_message(
+            embed=self.cog._queue_embed(self.player), view=self
+        )
+
+    async def _on_refresh(self, interaction: discord.Interaction) -> None:
+        self._rebuild()
+        await interaction.response.edit_message(
+            embed=self.cog._queue_embed(self.player), view=self
+        )
+
+    async def on_timeout(self) -> None:
+        if self.message is None:
+            return
+        for item in self.children:
+            if hasattr(item, "disabled"):
+                item.disabled = True
+        try:
+            await self.message.edit(view=self)
+        except (discord.NotFound, discord.HTTPException):
+            pass
+
+
 class Music(commands.Cog):
     """음악 재생 관련 명령어"""
 
@@ -219,45 +364,31 @@ class Music(commands.Cog):
 
         await interaction.response.send_message("👋 음악을 멈추고 퇴장합니다.", ephemeral=True)
 
-    @app_commands.command(name="대기열", description="현재 대기열을 확인합니다")
-    async def queue(self, interaction: discord.Interaction):
-        """대기열 확인"""
-
-        player = cast(wavelink.Player, interaction.guild.voice_client)
-
-        if not player:
-            await interaction.response.send_message("❌ 봇이 음성 채널에 없습니다.", ephemeral=True)
-            return
-
+    def _queue_embed(self, player: wavelink.Player) -> discord.Embed:
+        """/대기열 응답과 QueueView 새로고침에서 공유하는 임베드 빌더."""
         embed = discord.Embed(title="🎵 재생 대기열", color=0x3498db)
 
-        # 현재 재생 중인 곡
         if player.current:
             current = player.current
             embed.add_field(
                 name="🔊 현재 재생 중",
                 value=f"**[{current.title}]({current.uri})**\n길이: {self.format_duration(current.length)}",
-                inline=False
+                inline=False,
             )
         else:
             embed.add_field(name="🔊 현재 재생 중", value="없음", inline=False)
 
-        # 대기열
         if player.queue:
             queue_list = []
             for i, track in enumerate(player.queue[:10], 1):
                 queue_list.append(f"`{i}.` **{track.title}** ({self.format_duration(track.length)})")
-
             queue_text = "\n".join(queue_list)
-
             if len(player.queue) > 10:
                 queue_text += f"\n\n... 외 {len(player.queue) - 10}곡"
-
             embed.add_field(name=f"📋 대기열 ({len(player.queue)}곡)", value=queue_text, inline=False)
         else:
             embed.add_field(name="📋 대기열", value="비어있음", inline=False)
 
-        # 전체 반복 모드일 때 다음 사이클(history) 표시
         if (
             player.queue.mode is wavelink.QueueMode.loop_all
             and player.queue.history is not None
@@ -266,19 +397,32 @@ class Music(commands.Cog):
             history_list = []
             for i, track in enumerate(player.queue.history[:10], 1):
                 history_list.append(f"`H{i}.` **{track.title}** ({self.format_duration(track.length)})")
-
             history_text = "\n".join(history_list)
-
             if len(player.queue.history) > 10:
                 history_text += f"\n\n... 외 {len(player.queue.history) - 10}곡"
-
             embed.add_field(
                 name=f"🔁 다음 사이클 ({len(player.queue.history)}곡)",
                 value=history_text,
-                inline=False
+                inline=False,
             )
 
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        return embed
+
+    @app_commands.command(name="대기열", description="현재 대기열을 확인합니다")
+    async def queue(self, interaction: discord.Interaction):
+        """대기열 확인 + 셀렉트로 곡 삭제"""
+
+        player = cast(wavelink.Player, interaction.guild.voice_client)
+
+        if not player:
+            await interaction.response.send_message("❌ 봇이 음성 채널에 없습니다.", ephemeral=True)
+            return
+
+        view = QueueView(self, player)
+        await interaction.response.send_message(
+            embed=self._queue_embed(player), view=view, ephemeral=True
+        )
+        view.message = await interaction.original_response()
 
     @app_commands.command(name="반복", description="반복 재생 모드를 설정합니다")
     @app_commands.describe(모드="반복 모드 선택")
