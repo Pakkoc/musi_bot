@@ -39,7 +39,7 @@ lavalink:
 
     # 플레이어 설정
     playerUpdateInterval: 5
-    youtubePlaylistLoadLimit: 100
+    youtubePlaylistLoadLimit: 1000
     youtubeSearchEnabled: true
     gc-warnings: true
 

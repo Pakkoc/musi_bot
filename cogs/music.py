@@ -7,6 +7,29 @@ from discord.ext import commands
 from discord import app_commands
 import wavelink
 from typing import Optional, cast
+from urllib.parse import urlparse, parse_qs
+
+
+def _normalize_youtube_url(url: str) -> str:
+    """watch?v=...&list=... 형식이면 playlist?list=... 로 변환.
+
+    YouTube 플러그인은 watch URL에서 list 파라미터가 있어도 단일 영상만 반환하므로,
+    전체 플레이리스트 로드를 위해 순수 playlist URL로 바꿔준다.
+    RD(자동 생성 mix)는 일반 플레이리스트로 로드되지 않으므로 변환하지 않는다.
+    """
+    try:
+        parsed = urlparse(url)
+        host = parsed.netloc.lower()
+        if not (host == "youtube.com" or host.endswith(".youtube.com")):
+            return url
+        if parsed.path != "/watch":
+            return url
+        list_id = parse_qs(parsed.query).get("list", [None])[0]
+        if not list_id or list_id.startswith("RD"):
+            return url
+        return f"https://www.youtube.com/playlist?list={list_id}"
+    except Exception:
+        return url
 
 
 class Music(commands.Cog):
@@ -73,6 +96,7 @@ class Music(commands.Cog):
         try:
             # 검색어에 따라 트랙 검색
             if 검색어.startswith(("http://", "https://")):
+                검색어 = _normalize_youtube_url(검색어)
                 tracks = await wavelink.Playable.search(검색어)
             else:
                 # ytsearch: prefix로 YouTube 검색
