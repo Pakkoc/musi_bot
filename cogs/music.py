@@ -233,6 +233,27 @@ class Music(commands.Cog):
         else:
             embed.add_field(name="📋 대기열", value="비어있음", inline=False)
 
+        # 전체 반복 모드일 때 다음 사이클(history) 표시
+        if (
+            player.queue.mode is wavelink.QueueMode.loop_all
+            and player.queue.history is not None
+            and len(player.queue.history) > 0
+        ):
+            history_list = []
+            for i, track in enumerate(player.queue.history[:10], 1):
+                history_list.append(f"`H{i}.` **{track.title}** ({self.format_duration(track.length)})")
+
+            history_text = "\n".join(history_list)
+
+            if len(player.queue.history) > 10:
+                history_text += f"\n\n... 외 {len(player.queue.history) - 10}곡"
+
+            embed.add_field(
+                name=f"🔁 다음 사이클 ({len(player.queue.history)}곡)",
+                value=history_text,
+                inline=False
+            )
+
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @app_commands.command(name="반복", description="반복 재생 모드를 설정합니다")
@@ -295,9 +316,9 @@ class Music(commands.Cog):
         await interaction.response.send_message(f"🔀 대기열을 섞었습니다! ({len(player.queue)}곡)", ephemeral=True)
 
     @app_commands.command(name="삭제", description="대기열에서 특정 곡을 삭제합니다")
-    @app_commands.describe(번호="삭제할 곡의 번호 (대기열에서)")
-    async def remove(self, interaction: discord.Interaction, 번호: int):
-        """대기열에서 곡 삭제"""
+    @app_commands.describe(번호="삭제할 곡 번호 (예: 3 = 대기열 3번, H2 = 다음 사이클 2번)")
+    async def remove(self, interaction: discord.Interaction, 번호: str):
+        """대기열 또는 다음 사이클(history)에서 곡 삭제"""
 
         player = cast(wavelink.Player, interaction.guild.voice_client)
 
@@ -305,17 +326,44 @@ class Music(commands.Cog):
             await interaction.response.send_message("❌ 봇이 음성 채널에 없습니다.", ephemeral=True)
             return
 
-        if 번호 < 1 or 번호 > len(player.queue):
+        raw = 번호.strip().upper()
+
+        if raw.startswith("H"):
+            target_queue = player.queue.history
+            label = "다음 사이클"
+            number_part = raw[1:]
+        else:
+            target_queue = player.queue
+            label = "대기열"
+            number_part = raw
+
+        try:
+            idx = int(number_part)
+        except ValueError:
             await interaction.response.send_message(
-                f"❌ 올바른 번호를 입력해주세요. (1-{len(player.queue)})",
+                "❌ 형식이 올바르지 않습니다. 예: `3` (대기열) 또는 `H2` (다음 사이클)",
                 ephemeral=True
             )
             return
 
-        removed = player.queue[번호 - 1]
-        del player.queue[번호 - 1]
+        if target_queue is None or len(target_queue) == 0:
+            await interaction.response.send_message(f"❌ {label}이(가) 비어있습니다.", ephemeral=True)
+            return
 
-        await interaction.response.send_message(f"🗑️ **{removed.title}** 삭제됨", ephemeral=True)
+        if idx < 1 or idx > len(target_queue):
+            await interaction.response.send_message(
+                f"❌ 올바른 번호를 입력해주세요. ({label} 1-{len(target_queue)})",
+                ephemeral=True
+            )
+            return
+
+        removed = target_queue[idx - 1]
+        del target_queue[idx - 1]
+
+        await interaction.response.send_message(
+            f"🗑️ **{removed.title}** 삭제됨 ({label})",
+            ephemeral=True
+        )
 
     @app_commands.command(name="현재곡", description="현재 재생 중인 곡 정보를 보여줍니다")
     async def nowplaying(self, interaction: discord.Interaction):
