@@ -2,6 +2,7 @@
 .env
 .env.local
 venv/
+musi_bot_env/
 __pycache__/
 *.pyc
 *.pyo
@@ -16,6 +17,8 @@ lavalink/plugins/
 lavalink/*.json
 lavalink/logs/
 Lavalink.jar
+lavalink/Lavalink*.jar
+*.bak
 
 # IDE
 .vscode/

@@ -55,7 +55,8 @@ plugins:
     # 서버에서 직접 OAuth 인증 후 refreshToken 설정 필요
     oauth:
       enabled: true
-      # refreshToken: "YOUR_REFRESH_TOKEN_HERE"
+      # Lavalink 실행 시 환경변수 YOUTUBE_REFRESH_TOKEN 필요 (없으면 placeholder 로 둘 것)
+      refreshToken: "${YOUTUBE_REFRESH_TOKEN}"
 
     # 클라이언트 설정 (WEB으로 검색, ANDROID_VR로 재생)
     clients:
