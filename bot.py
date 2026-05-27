@@ -133,13 +133,15 @@ class MusicBot(commands.Bot):
         if not player:
             return
 
-        # 다음 곡 재생 (큐에 있는 경우)
-        if player.queue:
+        # queue.get() 안에서 loop/loop_all 분기를 처리하므로
+        # if player.queue 로 미리 거르면 반복 모드가 동작하지 않는다.
+        try:
             next_track = player.queue.get()
-            await player.play(next_track)
-        else:
-            # 큐가 비었으면 자동 퇴장 타이머 시작
+        except wavelink.QueueEmpty:
             await start_disconnect_timer(player)
+            return
+
+        await player.play(next_track)
 
     async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState):
         """음성 채널 상태 변경 감지 - 봇 혼자 남으면 퇴장"""
