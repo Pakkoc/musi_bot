@@ -11,7 +11,9 @@ lavalink:
     - dependency: "dev.lavalink.youtube:youtube-plugin:1.18.0"
       snapshot: false
     # LavaSrc Plugin - Spotify, Apple Music, Deezer 지원
-    - dependency: "com.github.topi314.lavasrc:lavasrc-plugin:4.3.0"
+    # 4.3.0은 Spotify 익명 토큰(TOTP) 방식이 깨져 검색/URL 해석 불가 → 4.8.3로 상향.
+    # 4.8.3은 신규 Spotify 앱용 playlist API(/items) 대응 포함. (Lavalink v4면 충분)
+    - dependency: "com.github.topi314.lavasrc:lavasrc-plugin:4.8.3"
       repository: "https://maven.lavalink.dev/releases"
     # SponsorBlock Plugin - 광고 구간 자동 스킵 (선택)
     - dependency: "com.github.topi314.sponsorblock:sponsorblock-plugin:3.0.1"
@@ -82,13 +84,18 @@ plugins:
       flowerytts: false
       youtube: true
 
-    # Spotify 설정 (사용하려면 아래 주석 해제 후 설정)
-    # spotify:
-    #   clientId: "your_spotify_client_id"
-    #   clientSecret: "your_spotify_client_secret"
-    #   countryCode: "KR"
-    #   playlistLoadLimit: 100
-    #   albumLoadLimit: 100
+    # Spotify 설정 — 자격증명은 .env에서 주입 (start-lavalink.sh가 JVM 기동 전 source).
+    # clientId/clientSecret가 비어 있으면 spsearch·URL 해석 모두 실패한다
+    # (Spotify가 익명 토큰 방식을 막아 자격증명이 필수가 됨).
+    spotify:
+      clientId: "${SPOTIFY_CLIENT_ID}"
+      clientSecret: "${SPOTIFY_CLIENT_SECRET}"
+      countryCode: "KR"          # 아티스트 인기곡 지역 필터 (ISO 3166-1 alpha-2)
+      playlistLoadLimit: 10      # 페이지 단위 × 100곡 = 최대 1000곡
+      albumLoadLimit: 6          # 페이지 단위 × 50곡 = 최대 300곡
+      # 참고: Spotify 자동생성 플레이리스트(Discover Weekly 등)·가사는 익명/계정
+      #       토큰(customTokenEndpoint)이 추가로 필요 → 이번 범위 제외.
+      #       일반 트랙/앨범/사용자 플레이리스트/검색은 위 자격증명만으로 동작.
 
   # SponsorBlock 설정
   sponsorblock:
