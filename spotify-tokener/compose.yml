@@ -1,0 +1,20 @@
+# Spotify 익명 토큰 서버 (LavaSrc customTokenEndpoint 용)
+# LavaSrc 저자(topi314)의 공식 서버. 헤드리스 Chrome으로 웹플레이어를 열어
+# Spotify 익명 토큰을 발급 → Spotify 플레이리스트 해석을 가능하게 함.
+# 계정/쿠키 불필요(완전 익명). lyrics를 쓸 경우에만 sp_dc 쿠키 relay 필요.
+#
+# 사용법:
+#   docker compose up -d        # 시작
+#   docker compose logs -f      # 로그
+#   docker compose pull && docker compose up -d   # 업데이트
+#
+# 보안: 127.0.0.1에만 바인딩 → 같은 호스트의 Lavalink만 접근 가능(외부 노출 X).
+# LavaSrc 연결: application.yml의 plugins.lavasrc.spotify.customTokenEndpoint
+#               = http://localhost:8080/api/token
+services:
+  spotify-tokener:
+    image: ghcr.io/topi314/spotify-tokener:master
+    container_name: spotify-tokener
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:8080"

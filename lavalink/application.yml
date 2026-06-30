@@ -93,9 +93,12 @@ plugins:
       countryCode: "KR"          # 아티스트 인기곡 지역 필터 (ISO 3166-1 alpha-2)
       playlistLoadLimit: 10      # 페이지 단위 × 100곡 = 최대 1000곡
       albumLoadLimit: 6          # 페이지 단위 × 50곡 = 최대 300곡
-      # 참고: Spotify 자동생성 플레이리스트(Discover Weekly 등)·가사는 익명/계정
-      #       토큰(customTokenEndpoint)이 추가로 필요 → 이번 범위 제외.
-      #       일반 트랙/앨범/사용자 플레이리스트/검색은 위 자격증명만으로 동작.
+      # 익명 토큰 서버(spotify-tokener, Docker localhost:8080) — 플레이리스트 해석에 필요.
+      # Spotify가 플리 곡목록(/items)에 유저/익명 토큰을 요구하게 바뀌어(Client Credentials만으론
+      # 401/404), 이 엔드포인트로 익명 토큰을 받아 플리(공식 37i9 포함)를 해석한다.
+      # 서버 구동: musi_bot/spotify-tokener/compose.yml → docker compose up -d
+      customTokenEndpoint: "http://localhost:8080/api/token"
+      preferPartnerApi: true     # 플리 해석을 파트너 API(익명 토큰 경로)로 라우팅 (v1+Client Cred는 401)
 
   # SponsorBlock 설정
   sponsorblock:
