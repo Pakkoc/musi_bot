@@ -1,0 +1,20 @@
+# YouTube 서명 해독 서버 (youtube-source remoteCipher 용)
+# 2026-10: YouTube 플레이어 스크립트 변경으로 youtube-source의 로컬 cipher가
+# "Must find sig function from script" 로 실패 → 원격 cipher(yt-dlp/ejs 기반)로 위임.
+#
+# 사용법:
+#   docker compose up -d        # 시작
+#   docker compose logs -f      # 로그
+#   docker compose pull && docker compose up -d   # 업데이트 (YouTube가 또 깨지면 먼저 시도)
+#
+# 보안: 127.0.0.1에만 바인딩 → 같은 호스트의 Lavalink만 접근 가능(외부 노출 X).
+# Lavalink 연결: application.yml의 plugins.youtube.remoteCipher.url = http://localhost:8001
+services:
+  yt-cipher:
+    image: ghcr.io/kikkia/yt-cipher:master
+    container_name: yt-cipher
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8001:8001"
+    environment:
+      - OVERRIDE_PLAYER_VARIANT=IAS

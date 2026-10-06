@@ -8,7 +8,7 @@ server:
 lavalink:
   plugins:
     # YouTube Source Plugin (필수) - 429 에러 방지용
-    - dependency: "dev.lavalink.youtube:youtube-plugin:1.18.0"
+    - dependency: "dev.lavalink.youtube:youtube-plugin:1.18.2"
       snapshot: false
     # LavaSrc Plugin - Spotify, Apple Music, Deezer 지원
     # 4.3.0은 Spotify 익명 토큰(TOTP) 방식이 깨져 검색/URL 해석 불가 → 4.8.3로 상향.
@@ -60,11 +60,20 @@ plugins:
       # Lavalink 실행 시 환경변수 YOUTUBE_REFRESH_TOKEN 필요 (없으면 placeholder 로 둘 것)
       refreshToken: "${YOUTUBE_REFRESH_TOKEN}"
 
-    # 클라이언트 설정 (WEB으로 검색, ANDROID_VR로 재생)
+    # 클라이언트 설정 (2026-10: WEB은 SABR 전용이라 오디오 스트림 없음, ANDROID_*는 로그인 요구)
+    # → 재생은 OAuth 지원 TV 클라이언트 + TVHTML5_SIMPLY에 의존. 순서대로 시도됨.
     clients:
+      - MUSIC
       - WEB
-      - ANDROID_MUSIC
+      - TVHTML5_SIMPLY
+      - TV
       - ANDROID_VR
+
+    # 원격 서명 해독 서버 (musi_bot/yt-cipher/compose.yml, Docker localhost:8001)
+    # 로컬 cipher가 YouTube 신규 플레이어 스크립트를 해석 못해 TV(OAuth) 재생이 실패하던 문제 해결.
+    remoteCipher:
+      url: "http://localhost:8001"
+      userAgent: "musi_bot"
 
     # PoToken 설정 (선택 - 더 안정적인 연결)
     # pot:
