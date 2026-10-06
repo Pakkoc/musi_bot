@@ -94,6 +94,8 @@ class MusicBot(commands.Bot):
 
         # Music Cog 로드
         await self.load_extension("cogs.music")
+        # 재생 장애 감지 + 관리자 DM 알림
+        await self.load_extension("cogs.monitor")
 
         print(f"[Lavalink] {LAVALINK_URI} 연결 완료")
 
