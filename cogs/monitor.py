@@ -33,6 +33,9 @@ HEALTH_CHECKS = [
 # 같은 장애로 DM이 폭주하지 않도록 즉시 알림 최소 간격
 ALERT_COOLDOWN_SEC = 600
 
+# 정기 점검 실패 시 재시도까지 대기 시간
+RETRY_DELAY_SEC = 30
+
 TROUBLESHOOT = (
     "확인 순서:\n"
     "1. `pm2 logs lavalink` 에서 `All clients failed` 원인 확인\n"
@@ -53,8 +56,17 @@ async def check_playback(identifier: str, timeout: float = 20.0) -> str | None:
     try:
         async with aiohttp.ClientSession(headers=headers) as session:
             async with session.ws_connect(ws_url) as ws:
-                ready = json.loads((await ws.receive(timeout=10)).data)
-                session_id = ready["sessionId"]
+                # 접속 직후 ready보다 다른 op(stats 등)가 먼저 올 수 있어 ready가 올 때까지 기다린다.
+                # (매일 06:00 정각 점검에서 첫 메시지를 ready로 가정해 KeyError: 'sessionId' 오탐 발생)
+                session_id = None
+                ready_deadline = time.monotonic() + 10
+                while session_id is None:
+                    msg = await ws.receive(timeout=max(ready_deadline - time.monotonic(), 0.1))
+                    if msg.type != aiohttp.WSMsgType.TEXT:
+                        return f"Lavalink 웹소켓이 ready 전에 닫힘 ({msg.type.name})"
+                    payload = json.loads(msg.data)
+                    if payload.get("op") == "ready":
+                        session_id = payload["sessionId"]
 
                 async with session.get(f"{base}/v4/loadtracks", params={"identifier": identifier}) as r:
                     result = await r.json()
@@ -143,6 +155,11 @@ class Monitor(commands.Cog):
         failures = []
         for name, identifier in HEALTH_CHECKS:
             error = await check_playback(identifier)
+            if error:
+                # 일시적인 오류(예: 스트림 403)로 인한 오탐을 막기 위해 한 번 더 시도
+                print(f"[점검] {name}: 1차 실패, {RETRY_DELAY_SEC}초 후 재시도")
+                await asyncio.sleep(RETRY_DELAY_SEC)
+                error = await check_playback(identifier)
             print(f"[점검] {name}: {'정상' if error is None else '실패'}")
             if error:
                 failures.append((name, error))
