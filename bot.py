@@ -135,6 +135,17 @@ class MusicBot(commands.Bot):
         if not player:
             return
 
+        # 재생 실패 시 cogs/monitor.py가 예약한 1회 자동 재시도 (끊긴 위치부터)
+        pending = getattr(player, "pending_retry", None)
+        if pending:
+            player.pending_retry = None
+            if payload.reason == "loadFailed":
+                track, position = pending
+                await player.play(track, start=position, add_history=False)
+                return
+        if payload.reason == "finished" and payload.track:
+            getattr(player, "retried_tracks", set()).discard(payload.track.identifier)
+
         # queue.get() 안에서 loop/loop_all 분기를 처리하므로
         # if player.queue 로 미리 거르면 반복 모드가 동작하지 않는다.
         try:

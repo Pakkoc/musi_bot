@@ -135,6 +135,19 @@ class Monitor(commands.Cog):
         print(f"[재생 실패] {title}: {message.splitlines()[0] if message else ''}")
 
         player = payload.player
+
+        # YouTube가 재생 도중 스트림을 끊는 일시적 오류가 있어(2026-10-16 사례), 곡당 1회는
+        # 끊긴 위치부터 자동 재시도하고 알리지 않는다. 실제 재생은 직후 오는 TrackEnd(loadFailed)
+        # 에서 bot.py가 수행. (await 전에 상태를 기록해야 TrackEnd 핸들러보다 먼저 반영됨)
+        if player and payload.track:
+            retried: set[str] = getattr(player, "retried_tracks", set())
+            if payload.track.identifier not in retried:
+                retried.add(payload.track.identifier)
+                player.retried_tracks = retried
+                player.pending_retry = (payload.track, max(player.position - 2000, 0))
+                print(f"[재시도] {title}: {player.pending_retry[1] // 1000}초 지점부터 다시 재생")
+                return
+
         channel = getattr(player, "text_channel", None) if player else None
         if channel:
             try:
